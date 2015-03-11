@@ -1,0 +1,14 @@
+conf t
+interface GigabitEthernet0/2
+switchport trunk allowed vlan 234,336,337,356,445,488
+switchport mode trunk
+switchport nonegotiate
+switchport protected
+storm-control broadcast level 50.00 30.00
+storm-control action trap
+no cdp enable
+spanning-tree portfast
+spanning-tree bpduguard enable
+ip dhcp snooping limit rate 30
+exit
+exit

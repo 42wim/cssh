@@ -1,0 +1,19 @@
+[device "switch-building-x-*"]
+username=admin
+password=abc
+enable=abc
+
+[device "lwap-*"]
+username=admin
+password=abc
+enable=abc
+
+[device "customer1-switch-*"]
+username=admin
+password=abc
+enable=abc
+
+[device "lab-*"]
+username=cisco
+password=Cisco
+enable=Cisco
