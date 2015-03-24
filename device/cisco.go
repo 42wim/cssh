@@ -2,23 +2,30 @@ package device
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/ScriptRock/crypto/ssh"
 	"io"
 	"log"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 )
 
 type CiscoDevice struct {
-	Username string
-	Password string
-	Enable   string
-	name     string
-	Hostname string
-	stdin    io.WriteCloser
-	stdout   io.Reader
-	session  *ssh.Session
+	Username  string
+	Password  string
+	Enable    string
+	name      string
+	Hostname  string
+	stdin     io.WriteCloser
+	stdout    io.Reader
+	session   *ssh.Session
+	Echo      bool
+	EnableLog bool
+	Logdir    string
+	Log       *os.File
 }
 
 func (d *CiscoDevice) Connect() error {
@@ -41,6 +48,8 @@ func (d *CiscoDevice) Connect() error {
 	}
 	d.stdin, _ = session.StdinPipe()
 	d.stdout, _ = session.StdoutPipe()
+	d.Echo = true
+	d.EnableLog = true
 	modes := ssh.TerminalModes{
 		ssh.ECHO:          0, // disable echoing
 		ssh.OCRNL:         0,
@@ -49,6 +58,13 @@ func (d *CiscoDevice) Connect() error {
 	}
 	session.RequestPty("vt100", 0, 2000, modes)
 	session.Shell()
+	if d.Logdir != "" {
+		t := time.Now()
+		d.Log, err = os.OpenFile(filepath.Join(d.Logdir, t.Format("200601021504")+"-"+d.Hostname), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			return err
+		}
+	}
 	d.init()
 	d.session = session
 	return nil
@@ -58,11 +74,25 @@ func (d *CiscoDevice) Close() {
 	d.session.Close()
 }
 
-func (d *CiscoDevice) Cmd(cmd string) string {
+func (d *CiscoDevice) Cmd(cmd string) (string, error) {
 	bufstdout := bufio.NewReader(d.stdout)
-	io.WriteString(d.stdin, cmd+"\n")
-	time.Sleep(time.Millisecond * 100)
-	return strings.Replace(d.readln(bufstdout), "\r", "", -1)
+	lines := strings.Split(cmd, "!")
+	for _, line := range lines {
+		io.WriteString(d.stdin, line+"\n")
+		time.Sleep(time.Millisecond * 100)
+	}
+	output, err := d.readln(bufstdout)
+	if err != nil {
+		return "", err
+	}
+	output = strings.Replace(output, "\r", "", -1)
+	if d.Echo == false {
+		output = strings.Replace(output, lines[0], "", 1)
+	}
+    if d.Logdir != "" {
+        return "",nil
+    }
+	return output, nil
 }
 
 func (d *CiscoDevice) init() {
@@ -87,19 +117,25 @@ func (d *CiscoDevice) init() {
 	}
 }
 
-func (d *CiscoDevice) readln(r *bufio.Reader) string {
+func (d *CiscoDevice) readln(r *bufio.Reader) (string, error) {
 	re := regexp.MustCompile(".*?#.?$")
-	buf := make([]byte, 1000)
+	buf := make([]byte, 10000)
 	loadStr := ""
 	for {
 		n, err := r.Read(buf)
 		if err != nil {
-			log.Fatal(err)
+			return "", err
 		}
 		loadStr += string(buf[:n])
+		// logging to file if necessary
+		if d.Logdir != "" {
+			if d.EnableLog {
+				fmt.Fprintf(d.Log, string(buf[:n]))
+			}
+		}
 		if re.MatchString(loadStr) {
 			break
 		}
 	}
-	return loadStr
+	return loadStr, nil
 }

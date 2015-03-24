@@ -28,6 +28,8 @@ $ ./cssh
   -cmd-from="": file containing commands to execute
   -host="": host
   -host-from="": file containing hosts
+  -logdir="": directory to log output
+  -pipe=false: pipe to stdin
 ```
 
 
@@ -54,6 +56,49 @@ enable=abc
 Also see cssh.conf.dist
 
 ## examples
+
+### using -pipe
+```
+$ echo "sh version"| cssh -host lab-switch-1 -pipe|grep uptime
+lab-switch-1 uptime is 20 weeks, 4 days, 9 hours, 19 minutes
+```
+
+### using -logdir
+```
+$ mkdir logs
+$ cssh -host lab-switch-1 -cmd "sh tech" -logdir logs
+$ ls -b logs/
+201503242329-lab-switch-1
+```
+
+### interactive commands
+Use the '!' separator
+
+```
+$ cssh -cmd 'ping!ip!4.4.4.4!5!100!2!n!n' -host lab-switch-1
+Protocol [ip]: ip
+Target IP address: 4.4.4.4
+Repeat count [5]: 5
+Datagram size [100]: 100
+Timeout in seconds [2]: 2
+Extended commands [n]: n
+Sweep range of sizes [n]: n
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 4.4.4.4, timeout is 2 seconds:
+.....
+Success rate is 0 percent (0/5)
+lab-switch-1#
+```
+
+```
+$ cssh -cmd 'copy run start!' -host lab-switch-1
+copy run start
+Destination filename [startup-config]?
+Building configuration...
+[OK]
+lab-switch-1#
+```
+
 ### 1 host and 1 command
 ```
 $ cssh -host lab-switch-1 -cmd "sh clock"
