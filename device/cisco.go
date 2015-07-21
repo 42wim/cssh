@@ -3,7 +3,6 @@ package device
 import (
 	"bufio"
 	"fmt"
-	"github.com/ScriptRock/crypto/ssh"
 	"io"
 	"log"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/ScriptRock/crypto/ssh"
 )
 
 type CiscoDevice struct {
@@ -89,9 +90,9 @@ func (d *CiscoDevice) Cmd(cmd string) (string, error) {
 	if d.Echo == false {
 		output = strings.Replace(output, lines[0], "", 1)
 	}
-    if d.Logdir != "" {
-        return "",nil
-    }
+	if d.Logdir != "" {
+		return "", nil
+	}
 	return output, nil
 }
 
@@ -115,6 +116,7 @@ func (d *CiscoDevice) init() {
 			break
 		}
 	}
+	d.Cmd("terminal length 0")
 }
 
 func (d *CiscoDevice) readln(r *bufio.Reader) (string, error) {

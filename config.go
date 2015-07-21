@@ -1,10 +1,11 @@
 package main
 
 import (
-	"code.google.com/p/gcfg"
 	"io/ioutil"
 	"log"
 	"regexp"
+
+	"code.google.com/p/gcfg"
 )
 
 type Credentials struct {
