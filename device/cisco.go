@@ -27,6 +27,7 @@ type CiscoDevice struct {
 	EnableLog bool
 	Logdir    string
 	Log       *os.File
+	Prompt    string
 }
 
 func (d *CiscoDevice) Connect() error {
@@ -117,10 +118,18 @@ func (d *CiscoDevice) init() {
 		}
 	}
 	d.Cmd("terminal length 0")
+	d.Cmd("")
+	prompt, _ := d.Cmd("")
+	d.Prompt = strings.TrimSpace(prompt)
 }
 
 func (d *CiscoDevice) readln(r *bufio.Reader) (string, error) {
-	re := regexp.MustCompile(".*?#.?$")
+	var re *regexp.Regexp
+	if d.Prompt == "" {
+		re = regexp.MustCompile("[[:alnum:]]#.?$")
+	} else {
+		re = regexp.MustCompile(d.Prompt + ".?$")
+	}
 	buf := make([]byte, 10000)
 	loadStr := ""
 	for {
