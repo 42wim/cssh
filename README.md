@@ -12,13 +12,16 @@ Tested on:
 * run simple commands without an interactive shell
 
 ## building
-set your GOPATH correct (https://golang.org/doc/code.html#GOPATH)
+Make sure you have [Go](https://golang.org/doc/install) properly installed, including setting up your [GOPATH](https://golang.org/doc/code.html#GOPATH)
 
-```
-git clone https://github.com/42wim/cssh.git
-go get
-go build
-```
+Next, run
+
+ ```
+ $ cd $GOPATH
+ $ go get github.com/42wim/cssh
+ ```
+
+ You'll have the binary 'cssh' in $GOPATH/bin
 
 ## usage
 
