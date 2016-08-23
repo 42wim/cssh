@@ -1,0 +1,39 @@
+{
+	"version": 0,
+	"dependencies": [
+		{
+			"importpath": "github.com/ScriptRock/crypto/curve25519",
+			"repository": "https://github.com/ScriptRock/crypto",
+			"vcs": "git",
+			"revision": "99bf6683344078b23a2165ba9f417da7c447d5ee",
+			"branch": "master",
+			"path": "/curve25519",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/ScriptRock/crypto/ssh",
+			"repository": "https://github.com/ScriptRock/crypto",
+			"vcs": "git",
+			"revision": "99bf6683344078b23a2165ba9f417da7c447d5ee",
+			"branch": "master",
+			"path": "/ssh",
+			"notests": true
+		},
+		{
+			"importpath": "gopkg.in/gcfg.v1",
+			"repository": "https://gopkg.in/gcfg.v1",
+			"vcs": "git",
+			"revision": "27e4946190b4a327b539185f2b5b1f7c84730728",
+			"branch": "master",
+			"notests": true
+		},
+		{
+			"importpath": "gopkg.in/warnings.v0",
+			"repository": "https://gopkg.in/warnings.v0",
+			"vcs": "git",
+			"revision": "8a331561fe74dadba6edfc59f3be66c22c3b065d",
+			"branch": "master",
+			"notests": true
+		}
+	]
+}
