@@ -16,9 +16,10 @@ import (
 
 var (
 	flagHost, flagCmd, flagCmdfrom, flagHostfrom, flagLogdir string
-	flagPipe                                                 bool
+	flagPipe, flagVersion                                    bool
 	wg                                                       sync.WaitGroup
 	cfg                                                      config
+	version                                                  = "0.2"
 )
 
 func init() {
@@ -28,11 +29,18 @@ func init() {
 	flag.StringVar(&flagHostfrom, "host-from", "", "file containing hosts")
 	flag.StringVar(&flagLogdir, "logdir", "", "directory to log output")
 	flag.BoolVar(&flagPipe, "pipe", false, "pipe to stdin")
+	flag.BoolVar(&flagVersion, "version", false, "show version")
 	flag.Parse()
+
+	if flagVersion {
+		fmt.Println("Version:", version)
+		return
+	}
 	if flagHost == "" && flagHostfrom == "" {
 		flag.PrintDefaults()
 		return
 	}
+
 	cfg = readConfig("cssh.conf")
 }
 
