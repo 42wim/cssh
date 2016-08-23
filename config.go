@@ -5,7 +5,7 @@ import (
 	"log"
 	"regexp"
 
-	"code.google.com/p/gcfg"
+	"gopkg.in/gcfg.v1"
 )
 
 type Credentials struct {
