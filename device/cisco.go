@@ -122,6 +122,11 @@ func (d *CiscoDevice) init() {
 	prompt, _ := d.Cmd("")
 	d.Prompt = strings.TrimSpace(prompt)
 	d.Prompt = strings.Replace(d.Prompt, "#", "", -1)
+	// sometimes using conf t makes the (config-xx-something) so long that only 10 chars of
+	// original prompt remain
+	if len(d.Prompt) > 10 {
+		d.Prompt = d.Prompt[:10]
+	}
 }
 
 func (d *CiscoDevice) readln(r *bufio.Reader) (string, error) {
@@ -129,7 +134,7 @@ func (d *CiscoDevice) readln(r *bufio.Reader) (string, error) {
 	if d.Prompt == "" {
 		re = regexp.MustCompile("[[:alnum:]]#.?$")
 	} else {
-		re = regexp.MustCompile(d.Prompt + ".*?#$")
+		re = regexp.MustCompile(d.Prompt + ".*?#.?$")
 	}
 	buf := make([]byte, 10000)
 	loadStr := ""
