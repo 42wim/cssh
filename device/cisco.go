@@ -142,7 +142,6 @@ func (d *CiscoDevice) readln(r *bufio.Reader) (string, error) {
 		if d.Logdir != "" {
 			if d.EnableLog {
 				fmt.Fprint(d.Log, string(buf[:n]))
-				loadStr=""
 			}
 		}
 		if re.MatchString(string(buf[:n])) {
