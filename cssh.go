@@ -19,7 +19,7 @@ var (
 	flagPipe, flagVersion                                    bool
 	wg                                                       sync.WaitGroup
 	cfg                                                      config
-	version                                                  = "0.2"
+	version                                                  = "v0.3.0"
 )
 
 func init() {
