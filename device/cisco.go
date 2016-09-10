@@ -3,6 +3,7 @@ package device
 import (
 	"bufio"
 	"fmt"
+	"github.com/ScriptRock/crypto/ssh"
 	"io"
 	"log"
 	"os"
@@ -10,8 +11,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/ScriptRock/crypto/ssh"
 )
 
 type CiscoDevice struct {
@@ -28,11 +27,15 @@ type CiscoDevice struct {
 	Logdir    string
 	Log       *os.File
 	Prompt    string
+	ReadChan  chan *string
+	StopChan  chan struct{}
+	client    *ssh.Client
 }
 
 func (d *CiscoDevice) Connect() error {
 	config := &ssh.ClientConfig{
-		User: d.Username,
+		Timeout: time.Second * 5,
+		User:    d.Username,
 		Auth: []ssh.AuthMethod{
 			ssh.Password(d.Password),
 		},
@@ -46,8 +49,10 @@ func (d *CiscoDevice) Connect() error {
 	}
 	session, err := client.NewSession()
 	if err != nil {
+		client.Conn.Close()
 		return err
 	}
+	d.client = client
 	d.stdin, _ = session.StdinPipe()
 	d.stdout, _ = session.StdoutPipe()
 	d.Echo = true
@@ -73,31 +78,59 @@ func (d *CiscoDevice) Connect() error {
 }
 
 func (d *CiscoDevice) Close() {
+	d.client.Conn.Close()
 	d.session.Close()
 }
 
 func (d *CiscoDevice) Cmd(cmd string) (string, error) {
+	var result string
 	bufstdout := bufio.NewReader(d.stdout)
 	lines := strings.Split(cmd, "!")
 	for _, line := range lines {
 		io.WriteString(d.stdin, line+"\n")
 		time.Sleep(time.Millisecond * 100)
 	}
-	output, err := d.readln(bufstdout)
-	if err != nil {
-		return "", err
+	go d.readln(bufstdout)
+	for {
+		select {
+		case output := <-d.ReadChan:
+			{
+				if output == nil {
+					continue
+				}
+				if d.Echo == false {
+					result = strings.Replace(*output, lines[0], "", 1)
+				} else {
+					result = *output
+				}
+				return result, nil
+			}
+		case <-d.StopChan:
+			{
+				if d.session != nil {
+					d.session.Close()
+				}
+				d.client.Conn.Close()
+				d.Close()
+				return "", fmt.Errorf("EOF")
+			}
+		case <-time.After(time.Second * 30):
+			{
+				fmt.Println("timeout on", d.Hostname)
+				if d.session != nil {
+					d.session.Close()
+				}
+				d.client.Conn.Close()
+				d.Connect()
+				return "", nil
+			}
+		}
 	}
-	output = strings.Replace(output, "\r", "", -1)
-	if d.Echo == false {
-		output = strings.Replace(output, lines[0], "", 1)
-	}
-	if d.Logdir != "" {
-		return "", nil
-	}
-	return output, nil
 }
 
 func (d *CiscoDevice) init() {
+	d.ReadChan = make(chan *string, 20)
+	d.StopChan = make(chan struct{})
 	bufstdout := bufio.NewReader(d.stdout)
 	io.WriteString(d.stdin, "enable\n")
 	time.Sleep(time.Millisecond * 100)
@@ -129,30 +162,39 @@ func (d *CiscoDevice) init() {
 	}
 }
 
-func (d *CiscoDevice) readln(r *bufio.Reader) (string, error) {
+func (d *CiscoDevice) readln(r io.Reader) {
+	//re := regexp.MustCompile(".*?#.?$")
 	var re *regexp.Regexp
 	if d.Prompt == "" {
 		re = regexp.MustCompile("[[:alnum:]]#.?$")
 	} else {
 		re = regexp.MustCompile(d.Prompt + ".*?#.?$")
 	}
+	//fmt.Println("using prompt" + d.Prompt)
 	buf := make([]byte, 10000)
 	loadStr := ""
 	for {
 		n, err := r.Read(buf)
 		if err != nil {
-			return "", err
+			if err.Error() != "EOF" {
+				fmt.Println("ERROR ", err)
+			}
+			close(d.StopChan)
 		}
 		loadStr += string(buf[:n])
 		// logging to file if necessary
 		if d.Logdir != "" {
 			if d.EnableLog {
 				fmt.Fprint(d.Log, string(buf[:n]))
+				//loadStr = ""
 			}
 		}
 		if re.MatchString(string(buf[:n])) {
 			break
 		}
+		// keepalive
+		d.ReadChan <- nil
 	}
-	return loadStr, nil
+	loadStr = strings.Replace(loadStr, "\r", "", -1)
+	d.ReadChan <- &loadStr
 }
