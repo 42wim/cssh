@@ -114,7 +114,7 @@ func (c *streamCipherMode) createStream(key, iv []byte) (cipher.Stream, error) {
 type blockCipherMode struct {
 	keySize    int
 	ivSize     int
-	createFunc func(d cryptDirection, key, iv []byte) (cipher.BlockMode, error)
+	createFunc func(key []byte) (cipher.Block, error)
 }
 
 func (c *blockCipherMode) KeySize() int {
@@ -159,6 +159,7 @@ var cipherModes = map[string]cipherMode{
 	"aes128-cbc": &blockCipherMode{16, aes.BlockSize, newAESCBC},
 	"aes192-cbc": &blockCipherMode{24, aes.BlockSize, newAESCBC},
 	"aes256-cbc": &blockCipherMode{32, aes.BlockSize, newAESCBC},
+	// 3des-cbc is insecure and is disabled by default.
 	"3des-cbc":   &blockCipherMode{24, des.BlockSize, new3DESCBC},
 }
 
@@ -407,64 +408,11 @@ type cbcCipher struct {
 	oracleCamouflage uint32
 }
 
-func newAESCBC(dir cryptDirection, key, iv []byte) (cipher.BlockMode, error) {
-	c, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	if dir == encrypt {
-		return cipher.NewCBCEncrypter(c, iv), nil
-	} else if dir == decrypt {
-		return cipher.NewCBCDecrypter(c, iv), nil
-	} else {
-		panic(fmt.Sprintf("invalid crypt direction: %v", dir))
-	}
-}
-
-func new3DESCBC(dir cryptDirection, key, iv []byte) (cipher.BlockMode, error) {
-	c, err := des.NewTripleDESCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	if dir == encrypt {
-		return cipher.NewCBCEncrypter(c, iv), nil
-	} else if dir == decrypt {
-		return cipher.NewCBCDecrypter(c, iv), nil
-	} else {
-		panic(fmt.Sprintf("invalid crypt direction: %v", dir))
-	}
-}
-
-func (c *blockCipherMode) createBlock(d cryptDirection, key, iv []byte) (cipher.BlockMode, error) {
-	if len(key) < c.keySize {
-		panic("ssh: key length too small for cipher")
-	}
-	if len(iv) < c.ivSize {
-		panic("ssh: iv too small for cipher")
-	}
-
-	stream, err := c.createFunc(d, key[:c.keySize], iv[:c.ivSize])
-	if err != nil {
-		return nil, err
-	}
-
-	return stream, nil
-}
-
-func (scm *blockCipherMode) createPacketCipher(dir cryptDirection, d direction, algs directionAlgorithms, iv, key, macKey []byte) (packetCipher, error) {
-	decrypter, err := scm.createBlock(decrypt, key, iv)
-	if err != nil {
-		return nil, err
-	}
-	encrypter, err := scm.createBlock(encrypt, key, iv)
-	if err != nil {
-		return nil, err
-	}
-
+func newCBCCipher(c cipher.Block, iv, key, macKey []byte, algs directionAlgorithms) (packetCipher, error) {
 	cbc := &cbcCipher{
 		mac:        macModes[algs.MAC].new(macKey),
-		decrypter:  decrypter,
-		encrypter:  encrypter,
+		decrypter:  cipher.NewCBCDecrypter(c, iv),
+		encrypter:  cipher.NewCBCEncrypter(c, iv),
 		packetData: make([]byte, 1024),
 	}
 	if cbc.mac != nil {
@@ -472,6 +420,30 @@ func (scm *blockCipherMode) createPacketCipher(dir cryptDirection, d direction, 
 	}
 
 	return cbc, nil
+}
+
+func (scm *blockCipherMode) createPacketCipher(_ cryptDirection, d direction, algs directionAlgorithms, iv, key, macKey []byte) (packetCipher, error) {
+	if len(key) < scm.keySize {
+		panic("ssh: key length too small for cipher")
+	}
+	if len(iv) < scm.ivSize {
+		panic("ssh: iv too small for cipher")
+	}
+
+	block, err := scm.createFunc(key[:scm.keySize])
+	if err != nil {
+		return nil, err
+	}
+
+	return newCBCCipher(block, iv, key, macKey, algs)
+}
+
+func newAESCBC(key []byte) (cipher.Block, error) {
+	return aes.NewCipher(key)
+}
+
+func new3DESCBC(key []byte) (cipher.Block, error) {
+	return des.NewTripleDESCipher(key)
 }
 
 func maxUInt32(a, b int) uint32 {

@@ -38,19 +38,6 @@ type transport struct {
 	rand      io.Reader
 
 	io.Closer
-
-	// Initial H used for the session ID. Once assigned this does
-	// not change, even during subsequent key exchanges.
-	sessionID []byte
-}
-
-// getSessionID returns the ID of the SSH connection. The return value
-// should not be modified.
-func (t *transport) getSessionID() []byte {
-	if t.sessionID == nil {
-		panic("session ID not set yet")
-	}
-	return t.sessionID
 }
 
 // packetCipher represents a combination of SSH encryption/MAC
@@ -80,12 +67,6 @@ type connectionState struct {
 // both directions are triggered by reading and writing a msgNewKey packet
 // respectively.
 func (t *transport) prepareKeyChange(algs *algorithms, kexResult *kexResult) error {
-	if t.sessionID == nil {
-		t.sessionID = kexResult.H
-	}
-
-	kexResult.SessionID = t.sessionID
-
 	if ciph, err := newPacketCipher(decrypt, t.reader.dir, algs.r, kexResult); err != nil {
 		return err
 	} else {
@@ -118,7 +99,7 @@ func (s *connectionState) readPacket(r *bufio.Reader) ([]byte, error) {
 		case msgNewKeys:
 			select {
 			case cipher := <-s.pendingKeyChange:
-			s.packetCipher = cipher
+				s.packetCipher = cipher
 			default:
 				return nil, errors.New("ssh: got bogus newkeys message.")
 			}

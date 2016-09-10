@@ -11,10 +11,19 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/ScriptRock/crypto/ed25519",
+			"repository": "https://github.com/ScriptRock/crypto",
+			"vcs": "git",
+			"revision": "54588e68958efc4e3f43aebf25ce42817e714441",
+			"branch": "master",
+			"path": "/ed25519",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/ScriptRock/crypto/ssh",
 			"repository": "https://github.com/ScriptRock/crypto",
 			"vcs": "git",
-			"revision": "99bf6683344078b23a2165ba9f417da7c447d5ee",
+			"revision": "54588e68958efc4e3f43aebf25ce42817e714441",
 			"branch": "master",
 			"path": "/ssh",
 			"notests": true
