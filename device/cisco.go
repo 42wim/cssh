@@ -30,6 +30,7 @@ type CiscoDevice struct {
 	ReadChan  chan *string
 	StopChan  chan struct{}
 	client    *ssh.Client
+	Timeout   int
 }
 
 func (d *CiscoDevice) Connect() error {
@@ -57,6 +58,9 @@ func (d *CiscoDevice) Connect() error {
 	d.stdout, _ = session.StdoutPipe()
 	d.Echo = true
 	d.EnableLog = true
+	if d.Timeout == 0 {
+		d.Timeout = 30
+	}
 	modes := ssh.TerminalModes{
 		ssh.ECHO:          0, // disable echoing
 		ssh.OCRNL:         0,
@@ -114,7 +118,7 @@ func (d *CiscoDevice) Cmd(cmd string) (string, error) {
 				d.Close()
 				return "", fmt.Errorf("EOF")
 			}
-		case <-time.After(time.Second * 30):
+		case <-time.After(time.Second * time.Duration(d.Timeout)):
 			{
 				fmt.Println("timeout on", d.Hostname)
 				if d.session != nil {
