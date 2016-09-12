@@ -53,6 +53,9 @@ func (d *CiscoDevice) Connect() error {
 		client.Conn.Close()
 		return err
 	}
+	if d.StopChan == nil {
+		d.StopChan = make(chan struct{})
+	}
 	d.client = client
 	d.stdin, _ = session.StdinPipe()
 	d.stdout, _ = session.StdoutPipe()
@@ -183,7 +186,7 @@ func (d *CiscoDevice) readln(r io.Reader) {
 			if err.Error() != "EOF" {
 				fmt.Println("ERROR ", err)
 			}
-			close(d.StopChan)
+			d.StopChan <- struct{}{}
 		}
 		loadStr += string(buf[:n])
 		// logging to file if necessary
