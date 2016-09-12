@@ -193,10 +193,12 @@ func (d *CiscoDevice) readln(r io.Reader) {
 		if d.Logdir != "" {
 			if d.EnableLog {
 				fmt.Fprint(d.Log, string(buf[:n]))
-				//loadStr = ""
 			}
 		}
-		if re.MatchString(string(buf[:n])) {
+		if len(loadStr) >= 50 && re.MatchString(loadStr[len(loadStr)-45:]) {
+			break
+		}
+		if len(loadStr) < 50 && re.MatchString(loadStr) {
 			break
 		}
 		// keepalive
