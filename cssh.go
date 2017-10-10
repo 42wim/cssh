@@ -112,7 +112,12 @@ func parseFlags(filename string, stdin string) []string {
 }
 
 func main() {
-	hosts := parseFlags(flagHostfrom, flagHost)
+	hosts := strings.Fields(flagHost)
+	if len(hosts) > 1 {
+		hosts = append(hosts, parseFlags(flagHostfrom, "")...)
+	} else {
+		hosts = parseFlags(flagHostfrom, flagHost)
+	}
 	cmds := parseFlags(flagCmdfrom, flagCmd)
 	wg.Add(len(hosts))
 	for _, host := range hosts {
