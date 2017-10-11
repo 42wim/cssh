@@ -86,17 +86,28 @@ func (d *CiscoDevice) Connect() error {
 
 func (d *CiscoDevice) Close() {
 	d.client.Conn.Close()
-	d.session.Close()
+	if d.session != nil {
+		d.session.Close()
+	}
 }
 
 func (d *CiscoDevice) Cmd(cmd string) (string, error) {
-	var result string
-	bufstdout := bufio.NewReader(d.stdout)
+	result := ""
 	lines := strings.Split(cmd, "!")
 	for _, line := range lines {
-		io.WriteString(d.stdin, line+"\n")
-		time.Sleep(time.Millisecond * 100)
+		res, err := d.cmd(line)
+		result += res
+		if err != nil {
+			return result, err
+		}
 	}
+	return result, nil
+}
+
+func (d *CiscoDevice) cmd(cmd string) (string, error) {
+	var result string
+	bufstdout := bufio.NewReader(d.stdout)
+	io.WriteString(d.stdin, cmd+"\n")
 	go d.readln(bufstdout)
 	for {
 		select {
@@ -106,7 +117,7 @@ func (d *CiscoDevice) Cmd(cmd string) (string, error) {
 					continue
 				}
 				if d.Echo == false {
-					result = strings.Replace(*output, lines[0], "", 1)
+					result = strings.Replace(*output, cmd, "", 1)
 				} else {
 					result = *output
 				}
@@ -128,8 +139,8 @@ func (d *CiscoDevice) Cmd(cmd string) (string, error) {
 					d.session.Close()
 				}
 				d.client.Conn.Close()
-				d.Connect()
-				return "", nil
+				d.Close()
+				return "", fmt.Errorf("timeout")
 			}
 		}
 	}
